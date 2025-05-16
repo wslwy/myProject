@@ -1,0 +1,11 @@
+# 忽略所有__pycache__目录及其内容
+__pycache__/
+**/__pycache__/  # 递归忽略所有层级的__pycache__
+
+# 忽略所有.pyc、.pyo、.pyd编译文件
+*.pyc
+*.pyo
+*.pyd
+
+# 日志文件
+*.log
