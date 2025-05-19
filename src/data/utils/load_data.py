@@ -13,7 +13,7 @@ import random
 import re
 import yaml
 
-import utils.imgproc
+from . import imgproc
 
 
 # # 设置随机数种子

@@ -1,0 +1,14 @@
+cache_files_dir: "/data0/wyliang/cache_files"
+
+imagenet100:
+  vgg16: "vgg16_bn-imagenet100.pkl"
+  resnet50: "resnet50-imagenet100.pkl"
+  resnet101: "resnet101-imagenet100.pkl"
+  resnet152: "resnet152-imagenet100.pkl"
+ucf101:
+  vgg16: "vgg16_bn-ucf101.pkl"
+  resnet50: "resnet50-ucf101.pkl"
+  resnet101: "resnet101-ucf101.pkl"
+  resnet152: "resnet152-ucf101.pkl"
+esc50:
+  ast: "ast-esc50.pkl"

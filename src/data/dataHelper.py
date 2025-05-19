@@ -24,7 +24,7 @@ import sys
 # print(sys.path)
 # 导入工具模块
 # from utils.load_data import ImageDataset, Ucf101Dataset, get_cifar_100_dataset
-from utils.load_data import ImageDataset, Ucf101Dataset, get_cifar_100_dataset
+from .utils.load_data import ImageDataset, Ucf101Dataset, get_cifar_100_dataset
 
 
 
@@ -33,6 +33,7 @@ class DataHelper:
     def __init__(self, config_path="configs/data_config.yaml"):
         self.config_path = config_path
         self.load_config(config_path)
+        self.epc = 0
 
     def load_config(self, config_path):
         with open(config_path, 'r') as config_file:
@@ -83,9 +84,21 @@ class DataHelper:
         else:
             test_loader = DataLoader(test_dataset, batch_size=test_batch_size, shuffle=False, num_workers=2)
             data_loader = test_loader
-        return data_loader
+        
+        self.data_loader = data_loader
+        # 创建迭代器
+        self.data_iter = iter(data_loader)
     
-
+    def next_iter(self):
+        # 手动遍历
+        try:
+            data_block = next(self.data_iter)
+            # 处理数据
+            self.epc += 1
+            return data_block
+        except StopIteration:
+            print("遍历完成")
+            return None
     
     def split_data(self, data, num_clients: int, strategy: str="iid"):
         """划分数据到多个客户端"""
@@ -99,13 +112,14 @@ if __name__ == "__main__":
     import os
 
      # 构建配置文件的绝对路径
-    config_path = "/data/wyliang/async_simulator/configs/data_config.yaml"
+    config_path = "/data0/wyliang/async_simulator/configs/data_config.yml"
 
-    dataHelper = DataHelper(config_path)
-    if dataHelper.server == 407:
+    dataHelper1 = DataHelper(config_path)
+    dataHelper2 = DataHelper(config_path)
+    if dataHelper1.server == 407:
         train_dir_list_file = os.path.join("/data0/wyliang/datasets/ucf101/ucfTrainTestlist", "trainlist01.txt")
         test_dir_list_file = os.path.join("/data0/wyliang/datasets/ucf101/ucfTrainTestlist", "testlist01.txt")
-    elif dataHelper.server in [402, 405]:
+    elif dataHelper1.server in [402, 405]:
         train_dir_list_file = os.path.join("/data/wyliang/datasets/ucf101/ucfTrainTestlist", "trainlist01.txt")
         test_dir_list_file = os.path.join("/data/wyliang/datasets/ucf101/ucfTrainTestlist", "testlist01.txt")
 
@@ -114,8 +128,11 @@ if __name__ == "__main__":
     batch_size = 60
 
     step = 5
-    train_loader = dataHelper.load_data("ucf101", train_dir_list_file, 64, 256, "train", 15, class_num, 5)
-    test_loader = dataHelper.load_data("ucf101", test_dir_list_file, 64, batch_size, "test", num_per_class, class_num, step)
+    train_loader = dataHelper1.load_data("ucf101", train_dir_list_file, 64, 256, "train", 15, class_num, 5)
+    test_loader = dataHelper2.load_data("ucf101", test_dir_list_file, 64, batch_size, "test", num_per_class, class_num, step)
+    train_loader = dataHelper1.data_loader
+    test_loader = dataHelper2.data_loader
+
     print(len(train_loader))
     print(len(train_loader.dataset))
     print(len(test_loader))
