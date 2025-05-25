@@ -5,5 +5,3 @@ class Server:
         self.logger = sim_logger.getChild("Server")
         self.logger.info("Server started")
         return
-    
-    

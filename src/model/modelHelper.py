@@ -55,7 +55,7 @@ class ModelHelper:
         """
         根据切分好的模型进行带缓存的推理
         """
-        # print(f"length: {len(cache.cache_table[0])}")
+        # print(f"length: {len(cache_helper.cache.cache_table[0])}")
         hit = 0
         layer_idx = 0
         scores = np.zeros(cache_size, dtype=float)
@@ -78,6 +78,7 @@ class ModelHelper:
                 hit, pred_id = cache_helper.match_layer(vec, cache_helper.cache.cache_table[idx], scores, weight)
                 if hit:
                     x = pred_id
+                    # print("hit", x)
                     break
                 layer_idx += 1
 
@@ -102,6 +103,7 @@ class ModelHelper:
     def cache_step_infer(self, cache_helper, data_helper, cache_update, correct, total_num):
         # 正式推理
         total_time = 0.0
+        hit_count = 0
         layers_hits = defaultdict(int)
         layers_correct = defaultdict(int)
         layers_sum_time = defaultdict(float)
@@ -119,6 +121,7 @@ class ModelHelper:
             for idx in range(len(cache_helper.cache.ts_table)):
                 cache_helper.cache.ts_table[idx] += 1
                 cache_helper.cache.ts_table[y] = 0
+                cache_helper.cache.freq_table[y] += 1
 
             x = x.unsqueeze(0)
             start_time = time.perf_counter()
@@ -144,6 +147,7 @@ class ModelHelper:
 
                 # 添加额外详细记录信息
                 if hit:
+                    hit_count += 1
                     layers_hits[hit_idx] += 1
                     layers_correct[hit_idx] += test_correct
                     layers_sum_time[hit_idx] += sample_time * 1000
@@ -153,6 +157,13 @@ class ModelHelper:
                 filtered_num += 1
                 add_str = "### filtered"
             
+
+            # 用预测作为依据
+            # for idx in range(len(cache_helper.cache.ts_table)):
+            #     cache_helper.cache.ts_table[idx] += 1
+            #     cache_helper.cache.ts_table[pred] = 0
+            #     cache_helper.cache.freq_table[pred] += 1
+            
             # 缓存更新部分
             if not hit and cache_update:
                 for idx, sign in enumerate(cache_helper.cache.cache_sign_list):
@@ -160,23 +171,11 @@ class ModelHelper:
                         cache_helper.cache.up_cache_table[idx][pred] += up_data[idx]
                         cache_helper.cache.up_freq_table[idx][pred] += 1
 
-        # # 将暂存的缓存写入全局缓存
-        # for idx, sign in enumerate(local_cache.cache_sign_list):
-        #     if sign:
-        #         for label in range(global_cache.cache_size):
-        #             if local_cache.up_freq_table[idx][pred]:
-        #                 global_cache.cache_table[idx][label] = update_equation(global_cache.cache_table[idx][label], global_cache.up_freq_table[idx][label], local_cache.up_cache_table[idx][label], local_cache.up_freq_table[idx][label])
-        #                 global_cache.up_freq_table[idx][label] += local_cache.up_freq_table[idx][label]
-
-        # local_cache.update_table_clear()
-
-        # print(f"ts_table: {local_cache.ts_table}")
-
 
         # epc_acc = float(correct) / (cache_helper.W * (data_helper.epc + 1) - filtered_num)
         epc_acc = float(correct) / (total_num + cache_helper.W - filtered_num)
 
-        return correct, total_time, epc_acc, (total_num + cache_helper.W - filtered_num)
+        return correct, epc_acc, (total_num + cache_helper.W - filtered_num), hit_count
     
     
 

@@ -6,7 +6,8 @@ class Client:
     def __init__(self, idx: int, model_helper, data_helper, cache_helper):
         self.ID = idx
         self.timeStamp = 0.0
-        self.all_time = 0.0
+        
+
         self.step = len(data_helper.data_loader)
 
         self.logger = sim_logger.getChild(f"Client[{idx}]")  # 子Logger
@@ -16,6 +17,8 @@ class Client:
         self.data_helper = data_helper
         self.cache_helper = cache_helper
 
+        self.cache_update = True
+        self.hit_count = 0
         self.correct = 0
         self.sample_num = 0
         self.epc_acc_list = []
@@ -30,18 +33,16 @@ class Client:
         self.timeStamp += num
 
         start_time = time.perf_counter()
-        self.correct, step_time, epc_acc, self.sample_num  = self.model_helper.cache_step_infer(self.cache_helper, self.data_helper, False, self.correct, self.sample_num)
+        self.correct, epc_acc, self.sample_num, step_hit_count  = self.model_helper.cache_step_infer(self.cache_helper, self.data_helper, self.cache_update, self.correct, self.sample_num)
         end_time = time.perf_counter()
 
-        sample_time = end_time - start_time
+        step_time = end_time - start_time
 
         step_time *= 1000
-        sample_time *= 1000
 
         self.timeStamp += step_time
-        self.all_time += sample_time
+        self.hit_count += step_hit_count
 
-        self.logger.info(f"epc:{self.data_helper.epc}, {self.timeStamp:>10.3f} ms, {self.all_time:>10.3f}, acc:{epc_acc} ms")
+        self.logger.info(f"epc:{self.data_helper.epc}, {self.timeStamp:>10.3f} ms, acc:{epc_acc}, hit ratio:{self.hit_count * 1.0 / self.sample_num}, hit count/sample_num:{self.hit_count:>5}/{self.sample_num}")
 
-        self.step -= 1
         return self.timeStamp, epc_acc, self.sample_num

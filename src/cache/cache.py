@@ -34,6 +34,10 @@ class Cache:
         elif model_type == "resnet101":
             self.cache_layer_num = 34
             self.cache_sign_list = np.array([1] * self.cache_layer_num + [0] * 2)
+        elif model_type == "resnet152":
+            self.cache_layer_num = 52
+            self.cache_sign_list = np.array([1] * self.cache_layer_num + [0] * 2)
+
 
 
     # 为了测时间随便整的
@@ -94,7 +98,12 @@ class Cache:
         """ 清空缓存更新表中的信息 """
         for table in self.up_cache_table:
             table.fill(0)  # 使用 fill 方法将数组中的所有元素设置为零
-
+    
+    def freq_table_clear(self):
+        """ 清空本频率表中的信息 """
+        for table in self.freq_table:
+            table.fill(0)  # 使用 fill 方法将数组中的所有元素设置为零
+            
     # def to_device(self, device):
     #     # 将类的实例中的张量移到指定的GPU设备上
     #     for idx in range(len(self.cache_table)):
