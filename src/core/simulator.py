@@ -18,24 +18,39 @@ class Simulator:
         self.logger.info(f"Initializing {cNum} clients")
         return
     
-    def init_client(self, idx):
-        model_config_path = "/data0/wyliang/async_simulator/configs/model_config.yml"
-        model_helper = ModelHelper(model_config_path, "cpu", "resnet101", "ucf101")
-
-        class_num = 50  # 101
-        num_per_class = 10   #  10000   # 足够大
-        batch_size = 60
-        step = 5
-
+    def init_client(self, idx, model_helper, class_distribution, batch_size, class_num, step):
         data_config_path = "/data0/wyliang/async_simulator/configs/data_config.yml"
         test_dir_list_file = os.path.join("/data0/wyliang/datasets/ucf101/ucfTrainTestlist", "testlist01.txt")
+
         data_helper = DataHelper(data_config_path)
-        data_helper.load_data("ucf101", test_dir_list_file, 64, batch_size, "test", num_per_class, class_num, step)
-        
+        data_helper.load_data("ucf101", test_dir_list_file, 64, batch_size, "test", class_distribution, class_num, step)
+
         client_config_path = "/data0/wyliang/async_simulator/configs/cache_config.yml"
         cache_helper = CacheHelper(client_config_path, "local", "resnet101", "ucf101", 50, 0.01, 60)
 
         return Client(idx, model_helper, data_helper, cache_helper)
+
+    def init_clients(self):
+        model_config_path = "/data0/wyliang/async_simulator/configs/model_config.yml"
+        model_helper = ModelHelper(model_config_path, "cpu", "resnet101", "ucf101")
+
+        data_config_path = "/data0/wyliang/async_simulator/configs/data_config.yml"
+        num_group = 4
+        num_ingroup_clients = 1
+        batch_num_per_client = 2000
+        batch_size = 60
+        class_num = 50
+        step = 5
+        
+        data_helper = DataHelper(data_config_path)
+        client_distribution = data_helper.get_client_data_distribution(
+            batch_num_per_client=batch_num_per_client, 
+            num_class=class_num,
+            num_group=num_group, 
+            num_ingroup_clients=num_ingroup_clients
+        )
+
+        return [self.init_client(idx, model_helper, client_distribution[idx], batch_size, class_num, step) for idx in range(num_group*num_ingroup_clients)]
     
     def init_server(self):
         server = Server()
@@ -48,7 +63,10 @@ class Simulator:
     
     def simulate(self):
         self.server = self.init_server()
-        self.clientList = [self.init_client(idx) for idx in range(self.clientNum)]
+        self.clientList = self.init_clients()
+
+        # for client in self.clientList:
+        #     print(len(client.data_helper.data_loader))
 
         self.executeQueue = PriorityQueue()
         for idx, client in enumerate(self.clientList):
@@ -62,14 +80,14 @@ class Simulator:
             self.server.cache_helper.allocate_cache(taskClient.cache_helper)
 
             # 本地推理
-            t, epc_acc, sample_num = taskClient.step_cache_infer()
+            t, total_acc, sample_num = taskClient.step_cache_infer()
             
             # 全局更新
             self.server.cache_helper.update(taskClient.cache_helper)
 
             # 打印信息
             # print(taskClient.ID, taskClient.step, t, "ms")
-            self.logger.info(f"{taskClient.step}, acc:{epc_acc}, step_time:{taskClient.timeStamp/sample_num:>10.3f} ms")
+            self.logger.info(f"{taskClient.ID}:{taskClient.step:>3}, acc:{total_acc}, avg_time:{taskClient.timeStamp/sample_num:>10.3f} ms")
 
             if taskClient.step > 0:
                 self.executeQueue.put((taskClient.timeStamp, taskClientIdx))
@@ -77,7 +95,6 @@ class Simulator:
     
     def test_cache(self):
         self.server = self.init_server()
-        self.clientList = [self.init_client(idx) for idx in range(self.clientNum)]
 
         print(self.server.cache_helper.cache.freq_table[0])
         
@@ -125,7 +142,7 @@ class Simulator:
 
 
 if __name__ == "__main__":
-    simulator = Simulator(1)
+    simulator = Simulator(4)
     simulator.simulate()
 
     # simulator.test_cache()

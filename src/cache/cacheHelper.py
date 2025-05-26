@@ -130,7 +130,8 @@ class CacheHelper:
         total_size = 0
         local_cache_helper.cache.cache_sign_list = [0] * len(local_cache_helper.cache.cache_sign_list)
 
-        for layer in [9, 17, 25, 33, 11, 5, 3, 1, 21, 19, 15, 13, 31, 29, 27, 7, 23]:
+        # for layer in [9, 17, 25, 33, 11, 5, 3, 1, 21, 19, 15, 13, 31, 29, 27, 7, 23]:
+        for layer in [10, 18, 26, 34, 12, 6, 4, 2, 22, 20, 16, 14, 32, 30, 28, 8, 24]:
             layer_idx = layer - 1
             total_size += cache_size
             if total_size > 250:
@@ -163,8 +164,8 @@ class CacheHelper:
         local_cache.update_table_clear()
 
         for idx in range(len(global_cache.freq_table)):
-            # global_cache.freq_table[idx] += local_cache.freq_table[idx]
-            global_cache.freq_table[idx] += 0
+            global_cache.freq_table[idx] += local_cache.freq_table[idx]
+            # global_cache.freq_table[idx] += 0
 
         local_cache.freq_table_clear()
 

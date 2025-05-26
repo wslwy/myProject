@@ -201,7 +201,18 @@ class Ucf101Dataset(Dataset):
             and the verification data set is not for data enhancement.
     """
 
-    def __init__(self, image_dir_list_file: str, img_dir_root: str, image_size: int, mode: str, shuffle: bool, num_per_class=2, num_class=2, step=10) -> None:
+    def __init__(
+            self, 
+            image_dir_list_file: str, 
+            img_dir_root: str, 
+            image_size: int, 
+            mode: str, 
+            shuffle: bool, 
+            num_class: int,
+            class_distribution, 
+            step=10
+        ) -> None:
+
         super(Ucf101Dataset, self).__init__()
         
         self.image_dir_list_file = image_dir_list_file
@@ -210,8 +221,8 @@ class Ucf101Dataset(Dataset):
         self.delimiter = delimiter
 
         # # 保留意见，是否还用
-        self.num_class = num_class
-        self.num_per_class = num_per_class
+        # self.num_class = num_class
+        # self.num_per_class = num_per_class
         # 按照每个类多少图片进行图片路径抽取
         # 获取原始数据集中的类别文件夹列表
         # self.class_folders = os.listdir(ucf101_datasets_root)[:self.num_class]
@@ -230,28 +241,28 @@ class Ucf101Dataset(Dataset):
             # 逐行读取文件内容
             file_lines = file.readlines() 
 
-        if self.shuffle:
-            random.shuffle(file_lines)
+        # if self.shuffle:
+        #     random.shuffle(file_lines)
 
         for file in file_lines:
             dir = file.split("/")[0]
-            if dir in class_dict:
-                if class_dict[dir] < self.num_per_class:
-                    select_lines.append(file)
-                    class_dict[dir] += 1
-                else:
-                    pass
+            idx = self.class_to_idx[dir]
+            if idx in class_dict:
+                class_dict[idx].append(file)
             else:
-                if class_num < self.num_class:
-                    select_lines.append(file)
-                    class_num += 1
-                    class_dict[dir] = 1
-                else:
-                    # impossible
-                    pass
+                class_dict[idx] = [file]
+                class_num += 1
 
+        # print(len(class_dict))
+        # for key, value in class_dict.items():
+        #     print(key, len(value))
 
-        # print(file_lines[:20])
+        for idx in range(num_class):
+            select_lines.extend(
+                random.choices(class_dict[idx], k=class_distribution[idx])
+            )
+
+        # print(len(select_lines))
         # print(select_lines)
 
         # 按照每个类多少图片进行图片路径抽取
@@ -263,6 +274,7 @@ class Ucf101Dataset(Dataset):
             folder = line.split()[0].split(".")[0]
             folder_list.append(folder)
         
+        random.shuffle(folder_list)
         # print(folder_list[:5])
 
         # 根据 视频文件夹选取图片
@@ -275,9 +287,13 @@ class Ucf101Dataset(Dataset):
             # random.shuffle(image_files) #打乱
             # selected_images = image_files[:min(self.num_per_class, len(image_files))]
             selected_images = sorted(image_files, key=lambda x: int(re.findall(r'\d+', x)[-1]))  # 按照字典序排列
-            selected_images = selected_images[::step]   # 压缩数据集大小，根据一定步长取样
+            step = max(1, step)
+            selected_images = selected_images[
+                random.randint(0, step-1)::step
+            ]   # 压缩数据集大小，根据一定步长取样
             self.image_file_paths.extend([os.path.join(img_dir, image) for image in selected_images])
 
+        # print(self.image_file_paths[:5])
         # test部分
         # test = self.image_file_paths[:50]
         # print(len(self.image_file_paths))
@@ -429,7 +445,7 @@ if __name__ == "__main__":
     # # print(images.shape)
     # # print("Batch Data:", labels)
 
-
+    server = 407
     # 加载测试数据
     if server == 402:
         train_dir_list_file = os.path.join("/data/wyliang/datasets/ucf101/ucfTrainTestlist", "trainlist01.txt")
@@ -450,3 +466,5 @@ if __name__ == "__main__":
     print(len(train_loader.dataset))
     print(len(test_loader))
     print(len(test_loader.dataset))
+
+    

@@ -16,3 +16,8 @@ datasets:
     image_list_dir: "/data/wyliang/datasets/ucf101/ucfTrainTestlist" 
 
 default_image_size: 224 #256
+num_class: 50 
+batch_size: 60
+ratio: 1.0
+bias: 1 
+step: 5

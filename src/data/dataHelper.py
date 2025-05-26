@@ -25,6 +25,7 @@ import sys
 # 导入工具模块
 # from utils.load_data import ImageDataset, Ucf101Dataset, get_cifar_100_dataset
 from .utils.load_data import ImageDataset, Ucf101Dataset, get_cifar_100_dataset
+from .utils.load_group_data import load_clients
 
 
 
@@ -50,13 +51,32 @@ class DataHelper:
             elif self.server in [402, 405]:
                 self.ucf101_datasets_root = config["datasets"][405]["ucf101_datasets_root"]   
 
-            self.default_image_size = config["default_image_size"]     
-            
-    def load_data(self, dataset='ucf101', img_dir_list_file=None, train_batch_size=64, test_batch_size=256, mode="test", num_per_class=300, num_class=100, step=20):
+            self.default_image_size = config["default_image_size"]    
+            self.num_class = config["num_class"] 
+            self.ratio = config["ratio"]
+            self.bias = config["bias"]
+            self.batch_size = config["batch_size"]
+            self.step = config["step"]
+    
+    def get_client_data_distribution(self, batch_num_per_client, num_class, num_group, num_ingroup_clients):
         # 设置随机数种子
         seed_value = 2024
         random.seed(seed_value)
-        
+
+        return load_clients(
+            batch_num_per_client = batch_num_per_client, 
+            num_class = num_class, 
+            num_group = num_group, 
+            num_ingroup_clients = num_ingroup_clients, 
+            ratio = self.ratio, 
+            bias = self.bias
+        )
+    
+    def load_data(self, dataset='ucf101', img_dir_list_file=None, train_batch_size=64, test_batch_size=256, mode="test", class_distribution=[0.01]*100, num_class=100, step=20):
+        # 设置随机数种子
+        seed_value = 2024
+        random.seed(seed_value)
+
         if dataset == "cifar-100":
             train_dataset, test_dataset = get_cifar_100_dataset()
         elif dataset == 'imagenet-1k':
@@ -71,9 +91,9 @@ class DataHelper:
                 test_dataset = ImageDataset(image_dir=self.imagenet_100_datasets_test_root, image_size=self.default_image_size, mode=mode, num_per_class=num_per_class, num_class=num_class)
         elif dataset == 'ucf101':
             if mode == "train":
-                train_dataset = Ucf101Dataset(image_dir_list_file=img_dir_list_file, img_dir_root=self.ucf101_datasets_root, image_size=self.default_image_size, mode=mode, shuffle=True, num_per_class=num_per_class, num_class=num_class, step=step)
+                train_dataset = Ucf101Dataset(image_dir_list_file=img_dir_list_file, img_dir_root=self.ucf101_datasets_root, image_size=self.default_image_size, mode=mode, shuffle=True, num_class=num_class, class_distribution=class_distribution, step=self.step)
             else:
-                test_dataset = Ucf101Dataset(image_dir_list_file=img_dir_list_file, img_dir_root=self.ucf101_datasets_root, image_size=self.default_image_size, mode=mode, shuffle=True, num_per_class=num_per_class, num_class=num_class, step=step)
+                test_dataset = Ucf101Dataset(image_dir_list_file=img_dir_list_file, img_dir_root=self.ucf101_datasets_root, image_size=self.default_image_size, mode=mode, shuffle=True, num_class=num_class, class_distribution=class_distribution, step=self.step)
         else:
             print("error, no dataset matched")
 
